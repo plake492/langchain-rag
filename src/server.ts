@@ -4,6 +4,7 @@ dotenv.config();
 
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import chatRoutes from '@routes/chat';
 import { HealthResponse } from '@types';
 
@@ -14,6 +15,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Custom morgan tokens
+morgan.token('body', (req: any) => JSON.stringify(req.body));
+morgan.token('timestamp', () => new Date().toISOString());
+app.use(morgan('dev'));
 
 // Request logging middleware
 app.use((req, res, next) => {

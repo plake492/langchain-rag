@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { RAGService } from '@services/rag';
 import { QueryRequest, QueryResponse, ErrorResponse } from '@types';
+import { logToFile } from '@/utils/logging';
 
 const router = Router();
 const ragService = new RAGService();
@@ -45,13 +46,16 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
     const sources = await ragService.getRelevantDocuments(questionStr, k);
     console.log('Sources retrieved:', sources.length);
 
-    res.json({
+    const answerWithSources = {
       answer,
       sources: sources.map((doc: any) => ({
         content: doc.pageContent,
         metadata: doc.metadata,
       })),
-    });
+    };
+
+    logToFile({ type: 'QARY', file: 'query-logs' }, { question: questionStr, answer: answerWithSources });
+    res.json(answerWithSources);
   } catch (error) {
     console.error('Query error:', error);
     res.status(500).json({

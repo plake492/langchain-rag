@@ -41,3 +41,8 @@ export interface ValidationResult {
   issues: string[];
   score: number;
 }
+
+export interface LogginTypes {
+  type: 'SCRP' | 'QARY';
+  file: 'query-logs' | 'scrapping-logs';
+}

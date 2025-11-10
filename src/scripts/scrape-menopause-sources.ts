@@ -1,5 +1,6 @@
 import { MenopauseSourceScraper, ContentValidator, DuplicateDetector } from '@services/scraper';
 import { menopauseSources, additionalSources } from '@config/menopause-sources';
+import { logToFile } from '@/utils/logging';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import dotenv from 'dotenv';
@@ -42,6 +43,7 @@ async function scrapeSources() {
 
   // Store in Qdrant
   console.log('\n💾 Storing in Qdrant...');
+  logToFile({ type: 'SCRP', file: 'scrapping-logs' }, { docs: allDocs });
 
   try {
     const vectorStore = await QdrantVectorStore.fromDocuments(allDocs, embeddings, {
