@@ -1,12 +1,11 @@
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-import express, { Express, Request, Response } from "express";
-import cors from "cors";
-import chatRoutes from "@routes/chat";
-import { HealthResponse } from "@types";
-
+import express, { Express, Request, Response } from 'express';
+import cors from 'cors';
+import chatRoutes from '@routes/chat';
+import { HealthResponse } from '@types';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -23,35 +22,35 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use("/api/chat", chatRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check endpoint
-app.get("/health", (req: Request, res: Response<HealthResponse>) => {
+app.get('/health', (req: Request, res: Response<HealthResponse>) => {
   res.json({
-    status: "ok",
+    status: 'ok',
     timestamp: new Date().toISOString(),
     qdrantConnected: !!(process.env.QDRANT_URL && process.env.QDRANT_API_KEY) || false,
   });
 });
 
 // Root endpoint
-app.get("/", (req: Request, res: Response) => {
+app.get('/', (req: Request, res: Response) => {
   res.json({
-    message: "LangChain RAG API",
-    version: "1.0.0",
+    message: 'LangChain RAG API',
+    version: '1.0.0',
     endpoints: {
-      health: "/health",
-      query: "POST /api/chat/query",
-      documents: "POST /api/chat/documents",
+      health: '/health',
+      query: 'POST /api/chat/query',
+      documents: 'POST /api/chat/documents',
     },
   });
 });
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: any) => {
-  console.error("Unhandled error:", err);
+  console.error('Unhandled error:', err);
   res.status(500).json({
-    error: "Internal Server Error",
+    error: 'Internal Server Error',
     message: err.message,
   });
 });

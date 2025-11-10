@@ -27,7 +27,7 @@ export interface SourceConfig {
   metadata: {
     organization: string;
     category: string;
-    credibility: "high" | "medium";
+    credibility: 'high' | 'medium';
     lastVerified: string;
   };
   selectors?: {

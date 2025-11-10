@@ -1,8 +1,8 @@
-import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { Document } from "langchain/document";
-import { ValidationResult } from "@types";
-import axios from "axios";
+import { CheerioWebBaseLoader } from '@langchain/community/document_loaders/web/cheerio';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { Document } from 'langchain/document';
+import { ValidationResult } from '@types';
+import axios from 'axios';
 
 export class MenopauseSourceScraper {
   private textSplitter: RecursiveCharacterTextSplitter;
@@ -48,10 +48,7 @@ export class MenopauseSourceScraper {
   /**
    * Scrape multiple URLs with rate limiting
    */
-  async scrapeMultipleURLs(
-    urls: Array<{ url: string; metadata: Record<string, any> }>,
-    delayMs: number = 2000
-  ): Promise<Document[]> {
+  async scrapeMultipleURLs(urls: Array<{ url: string; metadata: Record<string, any> }>, delayMs: number = 2000): Promise<Document[]> {
     const allDocs: Document[] = [];
 
     for (const { url, metadata } of urls) {
@@ -110,7 +107,7 @@ export class MenopauseSourceScraper {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -124,51 +121,38 @@ export class ContentValidator {
 
     // Check 1: Minimum content length
     if (doc.pageContent.length < 100) {
-      issues.push("Content too short (< 100 chars)");
+      issues.push('Content too short (< 100 chars)');
       score -= 30;
     }
 
     // Check 2: Medical terminology presence
-    const medicalTerms = [
-      "menopause", "hormone", "estrogen", "perimenopause",
-      "symptom", "treatment", "therapy", "health"
-    ];
+    const medicalTerms = ['menopause', 'hormone', 'estrogen', 'perimenopause', 'symptom', 'treatment', 'therapy', 'health'];
 
-    const hasTerms = medicalTerms.some(term =>
-      doc.pageContent.toLowerCase().includes(term)
-    );
+    const hasTerms = medicalTerms.some((term) => doc.pageContent.toLowerCase().includes(term));
 
     if (!hasTerms) {
-      issues.push("No menopause-related medical terms found");
+      issues.push('No menopause-related medical terms found');
       score -= 40;
     }
 
     // Check 3: Navigation/boilerplate content
-    const boilerplatePatterns = [
-      /cookies?/i,
-      /privacy policy/i,
-      /terms of service/i,
-      /subscribe to newsletter/i,
-      /follow us on/i,
-    ];
+    const boilerplatePatterns = [/cookies?/i, /privacy policy/i, /terms of service/i, /subscribe to newsletter/i, /follow us on/i];
 
-    const hasBoilerplate = boilerplatePatterns.some(pattern =>
-      pattern.test(doc.pageContent)
-    );
+    const hasBoilerplate = boilerplatePatterns.some((pattern) => pattern.test(doc.pageContent));
 
     if (hasBoilerplate && doc.pageContent.length < 500) {
-      issues.push("Appears to be navigation/boilerplate content");
+      issues.push('Appears to be navigation/boilerplate content');
       score -= 50;
     }
 
     // Check 4: Required metadata
     if (!doc.metadata.organization) {
-      issues.push("Missing organization metadata");
+      issues.push('Missing organization metadata');
       score -= 20;
     }
 
     if (!doc.metadata.source) {
-      issues.push("Missing source URL");
+      issues.push('Missing source URL');
       score -= 20;
     }
 
@@ -183,12 +167,12 @@ export class ContentValidator {
    * Filter valid documents
    */
   filterValidDocuments(docs: Document[]): Document[] {
-    return docs.filter(doc => {
+    return docs.filter((doc) => {
       const result = this.validateContent(doc);
 
       if (!result.isValid) {
         console.log(`⚠️  Filtering out low-quality content (score: ${result.score})`);
-        console.log(`   Issues: ${result.issues.join(", ")}`);
+        console.log(`   Issues: ${result.issues.join(', ')}`);
         return false;
       }
 
@@ -233,7 +217,7 @@ export class RateLimiter {
     if (timeSinceLastRequest < minDelayMs) {
       const waitTime = minDelayMs - timeSinceLastRequest;
       console.log(`⏳ Rate limiting: waiting ${waitTime}ms for ${domain}`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
 
     this.lastRequestTime.set(domain, Date.now());
@@ -249,7 +233,7 @@ export async function checkRobotsTxt(url: string): Promise<boolean> {
     const robotsTxt = response.data;
 
     // Check if your user agent is disallowed
-    if (robotsTxt.includes("Disallow: /")) {
+    if (robotsTxt.includes('Disallow: /')) {
       console.warn(`⚠️  ${url} may disallow scraping`);
       return false;
     }
