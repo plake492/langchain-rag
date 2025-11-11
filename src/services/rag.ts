@@ -140,6 +140,50 @@ Answer:`;
   }
 
   /**
+   * Query the RAG system with streaming support
+   */
+  async *queryStream(question: string): AsyncGenerator<string, void, unknown> {
+    if (!this.vectorStore) {
+      throw new Error('RAG system not initialized');
+    }
+
+    if (typeof question !== 'string') {
+      throw new Error(`Question must be a string, received: ${typeof question}`);
+    }
+
+    const queryString = String(question).trim();
+
+    try {
+      // Get relevant documents
+      const docs = await this.vectorStore.similaritySearch(queryString, 4);
+
+      // Format context from documents
+      const context = docs.map((doc: any, i: number) => `Document ${i + 1}:\n${doc.pageContent}`).join('\n\n');
+
+      // Create prompt with context
+      const prompt = `Answer the question based only on the following context:
+
+${context}
+
+Question: ${queryString}
+
+Answer:`;
+
+      // Stream the response
+      const stream = await this.model.stream(prompt);
+
+      for await (const chunk of stream) {
+        if (typeof chunk.content === 'string') {
+          yield chunk.content;
+        }
+      }
+    } catch (error) {
+      console.error('Streaming query failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get relevant documents without generating an answer
    */
   async getRelevantDocuments(query: string, k: number = 4) {
