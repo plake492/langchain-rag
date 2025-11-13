@@ -24,7 +24,7 @@ export class RAGService {
     this.model = new ChatOpenAI({
       modelName: 'gpt-3.5-turbo',
       temperature: 0.7,
-      maxTokens: 1500,
+      maxTokens: 1000,
     });
   }
 
@@ -112,24 +112,21 @@ export class RAGService {
       console.log('Context length:', context.length);
 
       // Create prompt with context
-      const prompt = `You are a knowledgeable and helpful assistant. Your task is to provide comprehensive, detailed, and well-structured answers based on the provided context.
+      const prompt = `You are a knowledgeable and helpful assistant. Provide clear, well-structured answers based on the provided context.
 
 Instructions for your response:
-- Provide a thorough and detailed answer that fully addresses the question
-- Use the context information to support your answer with specific details and examples
-- Structure your response in a clear, organized manner with multiple paragraphs when appropriate
-- Explain concepts comprehensively rather than giving brief or minimal answers
-- Include relevant background information that helps understand the topic better
-- If the context contains multiple relevant points, cover all of them in your response
-- Use a professional yet conversational tone that is easy to understand
-- Aim for completeness and clarity in your explanation
+- Give a detailed answer that fully addresses the question
+- Support your answer with specific information from the context
+- Organize your response clearly, using paragraphs when needed
+- Include relevant details and examples
+- Use a professional yet conversational tone
 
 Context:
 ${context}
 
 Question: ${queryString}
 
-Detailed Answer:`;
+Answer:`;
 
       console.log('Calling LLM...');
       const response = await this.model.invoke(prompt);
@@ -173,8 +170,16 @@ Detailed Answer:`;
       const context = docs.map((doc: any, i: number) => `Document ${i + 1}:\n${doc.pageContent}`).join('\n\n');
 
       // Create prompt with context
-      const prompt = `Answer the question based only on the following context:
+      const prompt = `You are a knowledgeable and helpful assistant. Provide clear, well-structured answers based on the provided context.
 
+Instructions for your response:
+- Give a detailed answer that fully addresses the question
+- Support your answer with specific information from the context
+- Organize your response clearly, using paragraphs when needed
+- Include relevant details and examples
+- Use a professional yet conversational tone
+
+Context:
 ${context}
 
 Question: ${queryString}
