@@ -1,0 +1,20 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "logs/.619f739b2049c233587a631b9e495108fa36b398-audit.json",
+    "files": [
+        {
+            "date": 1762809911278,
+            "name": "logs/scraper-2025-11-10.log",
+            "hash": "48651a73e3462c19b9817b4482de74a8aa6e554e0289787f25db9c3cab4e072a"
+        },
+        {
+            "date": 1763046548470,
+            "name": "logs/scraper-2025-11-13.log",
+            "hash": "aa5665cfbf55a2000a7c23ec04829532951b4a33202a4a2eac3c9fd12fe70d81"
+        }
+    ],
+    "hashType": "sha256"
+}
