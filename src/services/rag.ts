@@ -25,6 +25,7 @@ export class RAGService {
       modelName: 'gpt-3.5-turbo',
       temperature: 0.7,
       maxTokens: 1000,
+      streaming: true,
     });
   }
 
