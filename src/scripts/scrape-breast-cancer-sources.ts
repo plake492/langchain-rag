@@ -1,5 +1,5 @@
 import { MenopauseSourceScraper, ContentValidator, DuplicateDetector } from '@services/scraper';
-import { menopauseSources } from '@config/menopause-sources';
+import { breastCancerSources } from '@config/breast-cancer-sources';
 import { logScraperActivity } from '@utils/logger';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { OpenAIEmbeddings } from '@langchain/openai';
@@ -8,12 +8,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function scrapeSources() {
-  console.log('🚀 Starting menopause source scraping...\n');
+  console.log('🚀 Starting breast cancer source scraping...\n');
 
   logScraperActivity({
     action: 'start',
-    message: 'Starting scraping process',
+    message: 'Starting breast cancer scraping process',
   });
+
+  if (breastCancerSources.length === 0) {
+    console.error('\n❌ No sources configured!');
+    console.log('📝 Please add breast cancer sources to: src/config/breast-cancer-sources.ts');
+    console.log('   See src/config/menopause-sources.ts for examples');
+    process.exit(1);
+  }
 
   const scraper = new MenopauseSourceScraper();
   const validator = new ContentValidator();
@@ -23,12 +30,10 @@ async function scrapeSources() {
     openAIApiKey: process.env.OPENAI_API_KEY,
   });
 
-  const initialDocsCount = 0;
-
   // Scrape all sources
   console.log('📥 Scraping sources...');
   let allDocs = await scraper.scrapeMultipleURLs(
-    menopauseSources,
+    breastCancerSources,
     2000 // 2 second delay between requests
   );
 
@@ -37,7 +42,7 @@ async function scrapeSources() {
   logScraperActivity({
     action: 'scrape_url',
     chunks: allDocs.length,
-    message: `Scraped ${menopauseSources.length} URLs`,
+    message: `Scraped ${breastCancerSources.length} URLs`,
   });
 
   // Validate content
@@ -72,14 +77,14 @@ async function scrapeSources() {
     process.exit(1);
   }
 
-  // Store in Qdrant
-  console.log('\n💾 Storing in Qdrant...');
+  // Store in Qdrant with breast_cancer_knowledge collection
+  console.log('\n💾 Storing in Qdrant (breast_cancer_knowledge collection)...');
 
   try {
     const vectorStore = await QdrantVectorStore.fromDocuments(allDocs, embeddings, {
       url: process.env.QDRANT_URL,
       apiKey: process.env.QDRANT_API_KEY,
-      collectionName: 'menopause_knowledge',
+      collectionName: 'breast_cancer_knowledge', // Different collection name
     });
 
     console.log('✅ All documents stored in Qdrant!');
@@ -87,7 +92,7 @@ async function scrapeSources() {
     logScraperActivity({
       action: 'store',
       totalDocuments: allDocs.length,
-      message: 'Successfully stored in Qdrant',
+      message: 'Successfully stored in Qdrant (breast_cancer_knowledge)',
     });
 
     // Summary by organization
@@ -122,7 +127,8 @@ async function scrapeSources() {
 // Run the scraper
 scrapeSources()
   .then(() => {
-    console.log('\n🎉 Scraping complete!');
+    console.log('\n🎉 Breast cancer scraping complete!');
+    console.log('✅ Collection "breast_cancer_knowledge" is ready to use');
     process.exit(0);
   })
   .catch((error) => {
