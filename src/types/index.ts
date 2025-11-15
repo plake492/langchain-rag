@@ -1,6 +1,9 @@
+export type CollectionType = 'menopause' | 'breast_cancer';
+
 export interface QueryRequest {
   question: string;
   k?: number;
+  collection?: CollectionType;
 }
 
 export interface QueryResponse {
@@ -8,6 +11,9 @@ export interface QueryResponse {
   sources?: Array<{
     content: string;
     metadata: Record<string, any>;
+    id: number;
+    organization: string;
+    url?: string;
   }>;
 }
 

@@ -14,6 +14,16 @@
             "date": 1763046548470,
             "name": "logs/scraper-2025-11-13.log",
             "hash": "aa5665cfbf55a2000a7c23ec04829532951b4a33202a4a2eac3c9fd12fe70d81"
+        },
+        {
+            "date": 1763159087681,
+            "name": "logs/scraper-2025-11-14.log",
+            "hash": "94dba7326d713fb32937af7a26dc5d3bb1587a52ecfdfaee0b75ad8c642e23c9"
+        },
+        {
+            "date": 1763219899952,
+            "name": "logs/scraper-2025-11-15.log",
+            "hash": "d24b6969d446e710a33202a22cfde3b5779e0e4af34b630d12b3ac5a04544f82"
         }
     ],
     "hashType": "sha256"

@@ -30,7 +30,7 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
   try {
     await ensureInitialized();
 
-    const { question, k = 4 } = req.body;
+    const { question, k = 4, collection = 'menopause' } = req.body;
 
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
       return res.status(400).json({
@@ -39,9 +39,32 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
       });
     }
 
+    // Switch to requested collection
+    await ragService.switchCollection(collection);
+
     const questionStr = String(question).trim();
     const answer = await ragService.query(questionStr);
-    const sources = await ragService.getRelevantDocuments(questionStr, k);
+
+    // Check if the answer indicates it couldn't be answered from context
+    const cannotAnswerPhrases = [
+      "doesn't contain",
+      "don't contain",
+      'not provided in the context',
+      'not found in the context',
+      'context does not',
+      'no information',
+      'cannot answer',
+      "can't answer",
+      'unable to answer',
+      'not addressed in the provided',
+      'not covered in the context',
+    ];
+
+    const answerLower = answer.toLowerCase();
+    const isAnsweredFromContext = !cannotAnswerPhrases.some((phrase) => answerLower.includes(phrase));
+
+    // Only get sources if the answer was based on the context
+    const sources = isAnsweredFromContext ? await ragService.getRelevantDocuments(questionStr, k) : [];
     const duration = Date.now() - startTime;
 
     // Log the query
@@ -54,9 +77,12 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
 
     res.json({
       answer,
-      sources: sources.map((doc: any) => ({
+      sources: sources.map((doc: any, index: number) => ({
+        id: index + 1,
         content: doc.pageContent,
         metadata: doc.metadata,
+        organization: doc.metadata?.organization || 'Unknown Source',
+        url: doc.metadata?.source || doc.metadata?.url,
       })),
     });
   } catch (error) {
@@ -84,7 +110,7 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
   try {
     await ensureInitialized();
 
-    const { question, k = 4 } = req.body;
+    const { question, k = 4, collection = 'menopause' } = req.body;
 
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
       return res.status(400).json({
@@ -92,6 +118,9 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
         message: 'Question must be a non-empty string',
       });
     }
+
+    // Switch to requested collection
+    await ragService.switchCollection(collection);
 
     const questionStr = String(question).trim();
 
@@ -109,17 +138,40 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
       res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
     }
 
-    // Get and send sources
-    const sources = await ragService.getRelevantDocuments(questionStr, k);
-    res.write(
-      `data: ${JSON.stringify({
-        type: 'sources',
-        sources: sources.map((doc: any) => ({
-          content: doc.pageContent,
-          metadata: doc.metadata,
-        })),
-      })}\n\n`
-    );
+    // Check if the answer indicates it couldn't be answered from context
+    const cannotAnswerPhrases = [
+      "doesn't contain",
+      "don't contain",
+      'not provided in the context',
+      'not found in the context',
+      'context does not',
+      'no information',
+      'cannot answer',
+      "can't answer",
+      'unable to answer',
+      'not addressed in the provided',
+      'not covered in the context',
+    ];
+
+    const answerLower = fullAnswer.toLowerCase();
+    const isAnsweredFromContext = !cannotAnswerPhrases.some((phrase) => answerLower.includes(phrase));
+
+    // Only get and send sources if the answer was based on the context
+    if (isAnsweredFromContext) {
+      const sources = await ragService.getRelevantDocuments(questionStr, k);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'sources',
+          sources: sources.map((doc: any, index: number) => ({
+            id: index + 1,
+            content: doc.pageContent,
+            metadata: doc.metadata,
+            organization: doc.metadata?.organization || 'Unknown Source',
+            url: doc.metadata?.source || doc.metadata?.url,
+          })),
+        })}\n\n`
+      );
+    }
 
     // Send completion event
     res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
@@ -131,7 +183,7 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
     logQuery({
       question: questionStr,
       answer: fullAnswer.substring(0, 200) + '...',
-      sources: sources.length,
+      sources: isAnsweredFromContext ? k : 0,
       duration,
     });
   } catch (error) {
@@ -155,7 +207,7 @@ router.post('/documents', async (req: Request<{}, {}, QueryRequest>, res: Respon
   try {
     await ensureInitialized();
 
-    const { question, k = 4 } = req.body;
+    const { question, k = 4, collection = 'menopause' } = req.body;
 
     if (!question || question.trim().length === 0) {
       return res.status(400).json({
@@ -164,12 +216,18 @@ router.post('/documents', async (req: Request<{}, {}, QueryRequest>, res: Respon
       });
     }
 
+    // Switch to requested collection
+    await ragService.switchCollection(collection);
+
     const documents = await ragService.getRelevantDocuments(question, k);
 
     res.json({
-      documents: documents.map((doc: any) => ({
+      documents: documents.map((doc: any, index: number) => ({
+        id: index + 1,
         content: doc.pageContent,
         metadata: doc.metadata,
+        organization: doc.metadata?.organization || 'Unknown Source',
+        url: doc.metadata?.source || doc.metadata?.url,
       })),
     });
   } catch (error) {
