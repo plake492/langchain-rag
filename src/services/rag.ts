@@ -1,9 +1,9 @@
 import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { QdrantVectorStore } from '@langchain/qdrant';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
+import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { DirectoryLoader } from 'langchain/document_loaders/fs/directory';
+import { DirectoryLoader } from '@langchain/classic/document_loaders/fs/directory';
 
 // Collection type definition
 export type CollectionType = 'menopause' | 'breast_cancer';
@@ -46,8 +46,8 @@ export class RAGService {
     try {
       // Load documents from directory
       const loader = new DirectoryLoader(documentsPath, {
-        '.txt': (path) => new TextLoader(path),
-        '.pdf': (path) => new PDFLoader(path),
+        '.txt': (path: string) => new TextLoader(path),
+        '.pdf': (path: string) => new PDFLoader(path),
       });
 
       const docs = await loader.load();

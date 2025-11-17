@@ -23,47 +23,52 @@ const consoleFormat = winston.format.combine(
   })
 );
 
+const queryTransports: winston.transport[] = [
+    new winston.transports.Console({ format: consoleFormat })
+];
+
+const scraperTransports: winston.transport[] = [
+    new winston.transports.Console({ format: consoleFormat })
+];
+
+if (process.env.NODE_ENV !== 'production') {
+    queryTransports.push(new DailyRotateFile({
+        filename: path.join('logs', 'queries-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        maxSize: '20m',
+        maxFiles: '14d',
+        level: 'info',
+    }));
+    queryTransports.push(new DailyRotateFile({
+        filename: path.join('logs', 'queries-error-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        maxSize: '20m',
+        maxFiles: '30d',
+        level: 'error',
+    }));
+    scraperTransports.push(new DailyRotateFile({
+        filename: path.join('logs', 'scraper-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        maxSize: '20m',
+        maxFiles: '30d',
+    }));
+}
+
+
 // Query logger - for API requests and responses
 const queryLogger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: logFormat,
-  transports: [
-    new DailyRotateFile({
-      filename: path.join('logs', 'queries-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
-      level: 'info',
-    }),
-    new DailyRotateFile({
-      filename: path.join('logs', 'queries-error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '30d',
-      level: 'error',
-    }),
-  ],
+  transports: queryTransports,
 });
 
 // Scraper logger - for scraping activity
 const scraperLogger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: logFormat,
-  transports: [
-    new DailyRotateFile({
-      filename: path.join('logs', 'scraper-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '30d',
-    }),
-  ],
+  transports: scraperTransports,
 });
 
-// Add console output in development
-if (process.env.NODE_ENV !== 'production') {
-  queryLogger.add(new winston.transports.Console({ format: consoleFormat }));
-  scraperLogger.add(new winston.transports.Console({ format: consoleFormat }));
-}
 
 // Helper functions for structured logging
 export const logQuery = (data: { question: string; answer?: string; sources?: number; duration?: number; error?: string; userId?: string }) => {

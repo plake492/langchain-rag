@@ -98,7 +98,7 @@ async function scrapeSources() {
     // Summary by organization
     const byOrg = allDocs.reduce(
       (acc, doc) => {
-        const org = doc.metadata.organization;
+        const org = doc.metadata.organization as string;
         acc[org] = (acc[org] || 0) + 1;
         return acc;
       },
