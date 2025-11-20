@@ -158,7 +158,7 @@ export class RAGService {
   /**
    * Query the RAG system
    */
-  async query(question: string): Promise<string> {
+  async query(question: string, metrics?: any): Promise<string> {
     const vectorStore = this.getVectorStore();
 
     if (typeof question !== 'string') {
@@ -169,9 +169,17 @@ export class RAGService {
     console.log('RAG Service - Query input type:', typeof queryString, 'Value:', queryString);
 
     try {
-      // Get relevant documents
+      // Time embedding generation (happens inside similaritySearch)
+      console.log('Generating query embedding...');
+      const endEmbeddingTiming = metrics?.startTiming?.('embeddingTime');
+
+      // Get relevant documents with timing
+      // Note: similaritySearch internally creates embeddings and searches
       console.log('Retrieving relevant documents...');
+      const endVectorSearchTiming = metrics?.startTiming?.('vectorSearchTime');
       const docs = await vectorStore.similaritySearch(queryString, 4);
+      if (endVectorSearchTiming) endVectorSearchTiming();
+      if (endEmbeddingTiming) endEmbeddingTiming();
       console.log(`Retrieved ${docs.length} documents`);
 
       // Format context from documents with source references
@@ -234,7 +242,7 @@ Answer (remember to cite sources using [1], [2], etc.):`;
   /**
    * Query the RAG system with streaming support
    */
-  async *queryStream(question: string): AsyncGenerator<string, void, unknown> {
+  async *queryStream(question: string, metrics?: any): AsyncGenerator<string, void, unknown> {
     const vectorStore = this.getVectorStore();
 
     if (typeof question !== 'string') {
@@ -244,8 +252,14 @@ Answer (remember to cite sources using [1], [2], etc.):`;
     const queryString = String(question).trim();
 
     try {
-      // Get relevant documents
+      // Time embedding generation (happens inside similaritySearch)
+      const endEmbeddingTiming = metrics?.startTiming?.('embeddingTime');
+
+      // Get relevant documents with timing
+      const endVectorSearchTiming = metrics?.startTiming?.('vectorSearchTime');
       const docs = await vectorStore.similaritySearch(queryString, 4);
+      if (endVectorSearchTiming) endVectorSearchTiming();
+      if (endEmbeddingTiming) endEmbeddingTiming();
 
       // Format context from documents with source references
       const context = docs
@@ -310,8 +324,17 @@ Answer (remember to cite sources using [1], [2], etc.):`;
     console.log('RAG Service - Document search input type:', typeof queryString);
 
     try {
-      const results = await vectorStore.similaritySearch(queryString, k);
-      return results;
+      // Use similaritySearchWithScore to get relevance scores
+      const results = await vectorStore.similaritySearchWithScore(queryString, k);
+
+      // Transform results to include score in metadata
+      return results.map(([doc, score]: [any, number]) => ({
+        ...doc,
+        metadata: {
+          ...doc.metadata,
+          score: score,
+        },
+      }));
     } catch (error) {
       console.error('Document retrieval failed:', error);
       throw error;
