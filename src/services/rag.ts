@@ -6,12 +6,13 @@ import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { DirectoryLoader } from '@langchain/classic/document_loaders/fs/directory';
 
 // Collection type definition
-export type CollectionType = 'menopause' | 'breast_cancer';
+export type CollectionType = 'menopause' | 'breast_cancer' | 'pcos';
 
 // Mapping of collection types to Qdrant collection names
 const COLLECTION_NAMES: Record<CollectionType, string> = {
   menopause: 'menopause_knowledge',
   breast_cancer: 'breast_cancer_knowledge',
+  pcos: 'pcos_knowledge',
 };
 
 export class RAGService {
@@ -194,7 +195,12 @@ export class RAGService {
       console.log('Context length:', context.length);
 
       // Determine the medical topic based on current collection
-      const medicalTopic = this.currentCollection === 'menopause' ? 'menopause' : 'breast cancer';
+      const medicalTopicMap: Record<CollectionType, string> = {
+        menopause: 'menopause',
+        breast_cancer: 'breast cancer',
+        pcos: 'Polycystic Ovary Syndrome (PCOS)',
+      };
+      const medicalTopic = medicalTopicMap[this.currentCollection];
 
       // Create prompt with context
       const prompt = `You are a medical expert specializing in ${medicalTopic}. Your role is to provide accurate, evidence-based information strictly from the medical documents provided below.
@@ -271,7 +277,12 @@ Answer (remember to cite sources using [1], [2], etc.):`;
         .join('\n\n');
 
       // Determine the medical topic based on current collection
-      const medicalTopic = this.currentCollection === 'menopause' ? 'menopause' : 'breast cancer';
+      const medicalTopicMap: Record<CollectionType, string> = {
+        menopause: 'menopause',
+        breast_cancer: 'breast cancer',
+        pcos: 'Polycystic Ovary Syndrome (PCOS)',
+      };
+      const medicalTopic = medicalTopicMap[this.currentCollection];
 
       // Create prompt with context
       const prompt = `You are a medical expert specializing in ${medicalTopic}. Your role is to provide accurate, evidence-based information strictly from the medical documents provided below.

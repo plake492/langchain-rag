@@ -1,4 +1,4 @@
-export type CollectionType = 'menopause' | 'breast_cancer';
+export type CollectionType = 'menopause' | 'breast_cancer' | 'pcos';
 
 export interface QueryRequest {
   question: string;
