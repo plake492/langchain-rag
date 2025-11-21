@@ -1,7 +1,12 @@
+// src/routes/chat.ts
+
 import { Router, Request, Response } from 'express';
 import { RAGService } from '@services/rag';
 import { QueryRequest, QueryResponse, ErrorResponse } from '@types';
 import { logQuery } from '@utils/logger';
+import { logToClickHouse } from '@services/clickhouse.service';
+import { RAGMetrics } from '@utils/metrics';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 const ragService = new RAGService();
@@ -27,6 +32,9 @@ const ensureInitialized = async () => {
  */
 router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<QueryResponse | ErrorResponse>) => {
   const startTime = Date.now();
+  const messageId = uuidv4();
+  const metrics = new RAGMetrics();
+
   try {
     await ensureInitialized();
 
@@ -43,7 +51,11 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
     await ragService.switchCollection(collection);
 
     const questionStr = String(question).trim();
-    const answer = await ragService.query(questionStr);
+
+    // Query with metrics tracking
+    const endLLMTiming = metrics.startTiming('llmGenerationTime');
+    const answer = await ragService.query(questionStr, metrics);
+    endLLMTiming();
 
     // Check if the answer indicates it couldn't be answered from context
     const cannotAnswerPhrases = [
@@ -67,13 +79,27 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
     const sources = isAnsweredFromContext ? await ragService.getRelevantDocuments(questionStr, k) : [];
     const duration = Date.now() - startTime;
 
-    // Log the query
+    // Log to existing logger
     logQuery({
       question: questionStr,
       answer: answer.substring(0, 200) + '...',
       sources: sources.length,
       duration,
     });
+
+    // Log to ClickHouse (fire and forget)
+    logToClickHouse({
+      messageId,
+      collection,
+      question: questionStr,
+      answer,
+      sources,
+      answeredFromContext: isAnsweredFromContext,
+      isStreaming: false,
+      totalTime: duration,
+      metrics,
+      req,
+    }).catch(console.error);
 
     res.json({
       answer,
@@ -87,11 +113,30 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
     });
   } catch (error) {
     const duration = Date.now() - startTime;
+
     logQuery({
       question: req.body.question || 'unknown',
       error: error instanceof Error ? error.message : 'Unknown error',
       duration,
     });
+
+    // Log error to ClickHouse (fire and forget)
+    logToClickHouse({
+      messageId,
+      collection: req.body.collection || 'unknown',
+      question: req.body.question || 'unknown',
+      answer: '',
+      sources: [],
+      answeredFromContext: false,
+      isStreaming: false,
+      totalTime: duration,
+      error: {
+        occurred: true,
+        type: error instanceof Error ? error.constructor.name : 'UnknownError',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      req,
+    }).catch(console.error);
 
     console.error('Query error:', error);
     res.status(500).json({
@@ -107,6 +152,9 @@ router.post('/query', async (req: Request<{}, {}, QueryRequest>, res: Response<Q
  */
 router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Response) => {
   const startTime = Date.now();
+  const messageId = uuidv4();
+  const metrics = new RAGMetrics();
+
   try {
     await ensureInitialized();
 
@@ -132,11 +180,16 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
 
     let fullAnswer = '';
 
-    // Stream the answer
-    for await (const chunk of ragService.queryStream(questionStr)) {
+    // Time the streaming
+    const endLLMTiming = metrics.startTiming('llmGenerationTime');
+
+    // Stream the answer with metrics
+    for await (const chunk of ragService.queryStream(questionStr, metrics)) {
       fullAnswer += chunk;
       res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
     }
+
+    endLLMTiming();
 
     // Check if the answer indicates it couldn't be answered from context
     const cannotAnswerPhrases = [
@@ -157,8 +210,9 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
     const isAnsweredFromContext = !cannotAnswerPhrases.some((phrase) => answerLower.includes(phrase));
 
     // Only get and send sources if the answer was based on the context
+    let sources: any[] = [];
     if (isAnsweredFromContext) {
-      const sources = await ragService.getRelevantDocuments(questionStr, k);
+      sources = await ragService.getRelevantDocuments(questionStr, k);
       res.write(
         `data: ${JSON.stringify({
           type: 'sources',
@@ -179,20 +233,53 @@ router.post('/query/stream', async (req: Request<{}, {}, QueryRequest>, res: Res
 
     const duration = Date.now() - startTime;
 
-    // Log the streaming query
+    // Log to existing logger
     logQuery({
       question: questionStr,
       answer: fullAnswer.substring(0, 200) + '...',
       sources: isAnsweredFromContext ? k : 0,
       duration,
     });
+
+    // Log to ClickHouse (fire and forget)
+    logToClickHouse({
+      messageId,
+      collection,
+      question: questionStr,
+      answer: fullAnswer,
+      sources,
+      answeredFromContext: isAnsweredFromContext,
+      isStreaming: true,
+      totalTime: duration,
+      metrics,
+      req,
+    }).catch(console.error);
   } catch (error) {
     const duration = Date.now() - startTime;
+
     logQuery({
       question: req.body.question || 'unknown',
       error: error instanceof Error ? error.message : 'Unknown error',
       duration,
     });
+
+    // Log error to ClickHouse
+    logToClickHouse({
+      messageId,
+      collection: req.body.collection || 'unknown',
+      question: req.body.question || 'unknown',
+      answer: '',
+      sources: [],
+      answeredFromContext: false,
+      isStreaming: true,
+      totalTime: duration,
+      error: {
+        occurred: true,
+        type: error instanceof Error ? error.constructor.name : 'UnknownError',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      req,
+    }).catch(console.error);
 
     res.write(`data: ${JSON.stringify({ type: 'error', message: error instanceof Error ? error.message : 'Unknown error' })}\n\n`);
     res.end();

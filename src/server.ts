@@ -7,9 +7,9 @@ import cors from 'cors';
 import morgan from 'morgan';
 import chatRoutes from '@routes/chat';
 import { HealthResponse } from '@types';
+import { clickhouseService } from './services/clickhouse.service';
 
 const app: Express = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -26,6 +26,17 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// Initialize services
+async function initializeServices() {
+  try {
+    // Connect to ClickHouse (won't throw if it fails)
+    await clickhouseService.connect();
+  } catch (error) {
+    console.error('Service initialization warning:', error);
+    // Continue anyway - app works without analytics
+  }
+}
 
 // Routes
 app.use('/api/chat', chatRoutes);
@@ -62,11 +73,25 @@ app.use((err: Error, req: Request, res: Response, next: any) => {
 });
 
 // Only start server if running locally (not on Vercel)
-if (process.env.NODE_ENV !== 'production') {
+
+async function startServer() {
+  await initializeServices();
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-  });
+
+  if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  }
 }
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing connections...');
+  await clickhouseService.close();
+  process.exit(0);
+});
+
+startServer();
 
 export default app;
