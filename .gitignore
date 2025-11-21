@@ -12,6 +12,9 @@ dist/
 npm-debug.log*
 logs/
 
+# Scraping tracking
+.scrape-tracking.json
+
 # OS files
 .DS_Store
 Thumbs.db
